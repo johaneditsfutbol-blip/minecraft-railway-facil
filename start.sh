@@ -1,38 +1,40 @@
 #!/bin/bash
 
-echo "--- 1. ACEPTANDO EULA ---"
+echo "--- FASE 1: LIMPIEZA DE CONFIGURACIÓN ---"
+# Borramos la configuración vieja para evitar conflictos
+rm -f server.properties
+
+echo "--- FASE 2: CREANDO CONFIGURACIÓN MAESTRA ---"
+# Creamos el archivo de propiedades línea por línea
+echo "motd=Server de Railway" >> server.properties
+echo "server-port=25565" >> server.properties
+# ESTO ES LO MÁS IMPORTANTE:
+echo "online-mode=false" >> server.properties
+echo "allow-flight=true" >> server.properties
+echo "enable-status=true" >> server.properties
+echo "enforce-secure-profile=false" >> server.properties
+echo "white-list=false" >> server.properties
+
+echo "--- FASE 3: EULA Y DESCARGA ---"
 echo "eula=true" > eula.txt
 
-echo "--- 2. VERIFICANDO ARCHIVOS ---"
 if [ ! -f server.jar ]; then
     echo "--- DESCARGANDO PAPERMC ---"
     curl -o server.jar https://api.papermc.io/v2/projects/paper/versions/1.21/builds/130/downloads/paper-1.21-130.jar
 fi
 
-echo "--- 3. APLICANDO PARCHES DE BEDROCK ---"
-# Esto es vital. Si no existe server.properties, lo creamos vacío para poder editarlo
-if [ ! -f server.properties ]; then
-    touch server.properties
-fi
-
-# AQUI ESTA LA MAGIA: Forzamos la configuración compatible con Bedrock
-# Desactivamos el modo online (para que Geyser pase sin pedir cuenta Java)
-sed -i 's/online-mode=true/online-mode=false/g' server.properties || echo "online-mode=false" >> server.properties
-# Permitimos vuelo (Bedrock a veces parece que vuela por lag y el server lo expulsa si esto no está activo)
-sed -i 's/allow-flight=false/allow-flight=true/g' server.properties || echo "allow-flight=true" >> server.properties
-# Desactivamos seguridad estricta de chat que da problemas
-sed -i 's/enforce-secure-profile=true/enforce-secure-profile=false/g' server.properties || echo "enforce-secure-profile=false" >> server.properties
-
-echo "--- 4. INICIANDO TÚNEL PLAYIT ---"
+echo "--- FASE 4: INICIANDO TÚNEL PLAYIT ---"
 if [ -z "$PLAYIT_SECRET" ]; then
-    echo "NO HAY CLAVE. REVISA LOS LOGS."
+    echo "ADVERTENCIA: No hay clave secreta. Revisa logs para link de claim."
     playit &
 else
-    echo "USANDO CLAVE CONFIGURADA."
+    echo "Playit iniciando con clave..."
     playit --secret $PLAYIT_SECRET &
 fi
 
-sleep 5
+# Esperamos a que el túnel se estabilice
+sleep 10
 
-echo "--- 5. INICIANDO MINECRAFT ---"
+echo "--- FASE 5: LANZANDO MINECRAFT ---"
+# Iniciamos
 java -Xms1G -Xmx2G -jar server.jar nogui
